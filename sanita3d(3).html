@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Sanita — Museu do Quotidiano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #c8a96e;
+    --gold-light: #e8d8a0;
+    --bg: #0a0906;
+    --bg2: #111009;
+    --bg3: #181410;
+    --border: #2a2418;
+    --text: #e2ddd4;
+    --muted: #8a8070;
+    --dim: #5a5040;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    position: relative;
+    text-align: center;
+    padding: 5rem 2rem 2rem;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 70% at 50% -10%, #2e1e06 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.2rem;
+    display: block;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 8vw, 5rem);
+    font-weight: 400;
+    line-height: 1.05;
+    color: #f5edd8;
+    margin-bottom: 1rem;
+  }
+  header h1 em { font-style: italic; color: var(--gold); }
+  header p {
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  .header-line {
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+    margin: 2rem auto 0;
+  }
+
+  /* ─── CONTROLS BAR ─── */
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 1rem 1.5rem;
+    flex-wrap: wrap;
+  }
+  .ctrl {
+    font-size: 11px;
+    color: var(--dim);
+    background: transparent;
+    border: 0.5px solid var(--border);
+    padding: 6px 16px;
+    border-radius: 30px;
+    letter-spacing: 0.5px;
+    cursor: default;
+    transition: all 0.25s;
+    user-select: none;
+  }
+  .ctrl.btn { cursor: pointer; }
+  .ctrl.btn:hover { background: #1e1a10; border-color: var(--gold); color: var(--gold); }
+  .ctrl.active { border-color: var(--gold); color: var(--gold); background: #1e1a10; }
+
+  /* ─── CANVAS ─── */
+  #canvas3d {
+    display: block;
+    width: 100%;
+    height: 520px;
+    cursor: grab;
+  }
+  #canvas3d:active { cursor: grabbing; }
+
+  /* ─── LABEL OVERLAY ─── */
+  .canvas-wrap { position: relative; }
+  .label-hint {
+    position: absolute;
+    bottom: 1.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #3a3020;
+    pointer-events: none;
+  }
+
+  /* ─── SECTIONS ─── */
+  .section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .section-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+  .section-header::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: var(--border);
+  }
+
+  /* ─── STATS GRID ─── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 3rem;
+  }
+  .stat {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem 1.2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat:hover { border-color: #4a3828; }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold) 0%, transparent 80%);
+  }
+  .stat-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    font-weight: 400;
+    color: var(--gold-light);
+    margin-bottom: 5px;
+    line-height: 1;
+  }
+  .stat-lbl {
+    font-size: 11.5px;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+
+  /* ─── FACTS ─── */
+  .fact-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-left: 2px solid var(--gold);
+    border-radius: 0 12px 12px 0;
+    padding: 1.4rem 1.6rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+  .fact-card:hover { background: #151208; }
+  .fact-card::after {
+    content: '→';
+    position: absolute;
+    right: 1.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #3a3020;
+    font-size: 1.2rem;
+    transition: color 0.2s;
+  }
+  .fact-card:hover::after { color: var(--gold); }
+  .fact-tag {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #7a6a40;
+    margin-bottom: 8px;
+  }
+  .fact-text {
+    font-size: 14px;
+    color: #b8b0a0;
+    line-height: 1.75;
+  }
+  .fact-progress {
+    display: flex;
+    gap: 5px;
+    margin-top: 12px;
+  }
+  .fact-dot {
+    width: 18px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .fact-dot.on { background: var(--gold); }
+
+  /* ─── TWO COL ─── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 580px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem 1.4rem;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #3a3020; }
+  .card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--gold);
+    margin-bottom: 0.8rem;
+  }
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+  .card p em { color: #c8b890; font-style: italic; }
+  .card p strong { color: var(--gold-light); font-weight: 400; }
+
+  /* ─── ANATOMY ─── */
+  .anat-list { display: flex; flex-direction: column; gap: 8px; }
+  .anat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .anat-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ─── HISTORY TIMELINE ─── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .tl-item:last-child { border-bottom: none; }
+  .tl-year {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    padding-top: 2px;
+  }
+  .tl-text { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .tl-text strong { color: #c8b890; font-weight: 400; }
+
+  /* ─── FULL WIDTH CARD ─── */
+  .full-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.8rem;
+    margin-bottom: 1.5rem;
+  }
+  .full-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    color: var(--gold);
+    margin-bottom: 0.7rem;
+  }
+  .full-card p {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .full-card p em { color: #c8c0a0; }
+  .full-card p strong { color: var(--gold-light); font-weight: 400; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    text-align: center;
+    padding: 3rem 2rem 4rem;
+    border-top: 0.5px solid var(--border);
+    margin-top: 2rem;
+  }
+  footer p {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #2e2818;
+  }
+  .footer-gold {
+    width: 30px;
+    height: 1px;
+    background: var(--gold);
+    margin: 1.2rem auto;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <span class="eyebrow">Museu do Quotidiano · Exposição Permanente Nº 1</span>
+  <h1>O Trono <em>Eterno</em><br>da Humanidade</h1>
+  <p>Uma exploração interativa em 3D do objeto mais visitado — e mais ignorado — da história da civilização.</p>
+  <div class="header-line"></div>
+</header>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <span class="ctrl">⟳ Arrastar para rodar</span>
+  <span class="ctrl">⊙ Scroll para zoom</span>
+  <span id="seatBtn" class="ctrl btn" onclick="toggleSeat()">↑ Abrir tampa</span>
+  <span id="flushBtn" class="ctrl btn" onclick="triggerFlush()">≋ Dar descarga</span>
+  <span id="autoBtn" class="ctrl btn active" onclick="toggleAuto()">◎ Rotação auto</span>
+</div>
+
+<!-- 3D CANVAS -->
+<div class="canvas-wrap">
+  <canvas id="canvas3d"></canvas>
+  <div class="label-hint">Modelo interativo · Three.js</div>
+</div>
+
+<!-- STATS -->
+<div class="section">
+  <div class="section-header"><h2>Em números</h2></div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val">6 L</div>
+      <div class="stat-lbl">Água por descarga moderna (era 20 L nos anos 80)</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">4000 a.C.</div>
+      <div class="stat-lbl">Primeiras retretes na civilização mesopotâmica</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">1596</div>
+      <div class="stat-lbl">Ano da 1ª sanita com descarga — Sir John Harington</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">1,5 anos</div>
+      <div class="stat-lbl">Tempo médio de vida sentado na sanita</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">19 M$</div>
+      <div class="stat-lbl">Custo da sanita da ISS — a mais cara do mundo</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">2,4 Bi</div>
+      <div class="stat-lbl">Pessoas sem acesso a saneamento básico hoje</div>
+    </div>
+  </div>
+
+  <!-- FACTS -->
+  <div class="section-header"><h2>Curiosidades</h2></div>
+  <div class="fact-card" onclick="nextFact()">
+    <div class="fact-tag" id="factNum">Curiosidade 1 de 10 · clica para avançar</div>
+    <div class="fact-text" id="factText"></div>
+    <div class="fact-progress" id="factProgress"></div>
+  </div>
+
+  <!-- ANATOMY + RECORD -->
+  <div class="two-col">
+    <div class="card">
+      <h3>Anatomia do aparelho</h3>
+      <div class="anat-list">
+        <div class="anat-row"><div class="anat-dot" style="background:#c8a96e"></div>Cisterna — reservatório de água</div>
+        <div class="anat-row"><div class="anat-dot" style="background:#90b0d0"></div>Válvula de descarga e bóia</div>
+        <div class="anat-row"><div class="anat-dot" style="background:#a0c890"></div>Bacia em porcelana vitrificada</div>
+        <div class="anat-row"><div class="anat-dot" style="background:#d0b080"></div>Autossifão — vedação de água</div>
+        <div class="anat-row"><div class="anat-dot" style="background:#d0a0a0"></div>Assento e tampa em polipropileno</div>
+        <div class="anat-row"><div class="anat-dot" style="background:#b0a0d0"></div>Sifão em S — bloqueio de gases</div>
+        <div class="anat-row"><div class="anat-dot" style="background:#b8c0c8"></div>Tubo de alimentação em metal</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>A sanita mais cara da história</h3>
+      <p>A sanita da Estação Espacial Internacional (ISS) custou <strong>19 milhões de dólares</strong>. Funciona em microgravidade usando sucção em vez de gravidade, processa resíduos sólidos e — mais notavelmente — <em>recicla a urina em água potável</em> com 93% de eficiência.</p>
+      <p style="margin-top:0.8rem">Foi desenvolvida pela NASA com a agência espacial russa Roscosmos e continua a ser a tecnologia sanitária mais avançada já construída.</p>
+    </div>
+  </div>
+
+  <!-- CRAPPER -->
+  <div class="full-card">
+    <h3>Thomas Crapper — o maior mito da canalização</h3>
+    <p>Ao contrário do que a lenda popular afirma, Thomas Crapper <em>não inventou</em> a sanita. A patente original pertence a Alexander Cummings (1775) e o mecanismo de descarga a Joseph Bramah (1778). Crapper era um canalizador e empresário vitoriano de Londres que, no final do século XIX, abriu o primeiro <em>showroom</em> do mundo dedicado a aparelhos sanitários — tornando-os objeto de desejo da classe média britânica. O seu apelido ficou eternamente associado ao objeto que ajudou a popularizar, dando até origem a expressões coloquiais em inglês.</p>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="section-header"><h2>Linha do tempo</h2></div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">4000 a.C.</div>
+        <div class="tl-text"><strong>Mesopotâmia</strong> — os sumérios constroem as primeiras retretes em tijolo com escoamento de água. Knossos, em Creta (1700 a.C.), terá a primeira sanita com cisterna de água corrente.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">100 d.C.</div>
+        <div class="tl-text"><strong>Roma Imperial</strong> — latrinas públicas com até 80 lugares. Usadas como espaço social, sem qualquer constrangimento. Os romanos usavam uma <em>tersorium</em> — esponja num pau partilhada por todos.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1596</div>
+        <div class="tl-text"><strong>Sir John Harington</strong> inventa a primeira sanita moderna com descarga de água para a sua madrinha — a Rainha Isabel I de Inglaterra. Ela adorou, mas o barulho assustava-a.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1775</div>
+        <div class="tl-text"><strong>Alexander Cummings</strong> patenteia o sifão em S — a inovação mais importante da história sanitária. A água retida bloqueia os gases do esgoto. Ainda usamos o mesmo princípio hoje.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1851</div>
+        <div class="tl-text"><strong>Grande Exposição de Londres</strong> — George Jennings instala casas de banho públicas pagas. Mais de 800.000 visitantes pagaram um penny, dando origem à expressão <em>"spend a penny"</em>.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1980s</div>
+        <div class="tl-text"><strong>Japão</strong> — a Toto lança o Washlet, revolucionando o conceito com bidé integrado, assento aquecido e controlo remoto. Hoje os modelos premium têm análise de saúde em tempo real.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">2008</div>
+        <div class="tl-text"><strong>ISS</strong> — a NASA instala a sanita de 19 milhões de dólares na Estação Espacial Internacional, capaz de reciclar urina em água potável com 93% de eficiência.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTUGAL + JAPAN -->
+  <div class="two-col">
+    <div class="card">
+      <h3>Portugal em números</h3>
+      <p>Existem cerca de <strong>4,3 milhões de sanitas</strong> instaladas em Portugal. Com 5 descargas diárias de 6 litros cada, o país consome <em>129 milhões de litros de água por dia</em> só em descargas — equivalente a 52 piscinas olímpicas.</p>
+    </div>
+    <div class="card">
+      <h3>O Japão e o futuro</h3>
+      <p>Os japoneses elevaram a sanita a <em>obra de engenharia</em>. Modelos Toto e INAX têm bidé aquecido, secador, música ambiente, abertura automática por sensor, desodorização catalítica e análise de glicose na urina em tempo real.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-gold"></div>
+  <p>Porcelana · Água · Civilização · © Museu do Quotidiano</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── FACTS ───────────────────────────────
+const facts = [
+  "Os romanos tinham latrinas públicas com até 80 lugares lado a lado, sem divisórias. Usavam-nas como espaço social — conversavam, faziam negócios e discutiam política. Partilhavam uma esponja num pau (tersorium) para higiene pessoal.",
+  "O sifão em S inventado por Alexander Cummings em 1775 é a inovação mais importante da história sanitária. A água retida cria uma barreira que impede os gases tóxicos do esgoto de subirem à casa. Usamos o mesmo princípio há 250 anos.",
+  "A palavra inglesa 'toilet' vem do francês 'toilette', diminutivo de 'toile' (tecido). Referia-se à mesa de toucador, depois ao quarto de vestir, e só no século XX passou a designar o aparelho sanitário em si.",
+  "Ao contrário do mito popular, a água numa descarga não gira em sentidos opostos no hemisfério Norte e Sul. O efeito de Coriolis é demasiado fraco a essa escala. A direção depende apenas do design dos jatos internos de entrada de água.",
+  "Em média, uma pessoa passa cerca de 1,5 anos da sua vida sentada na sanita. Estudos mostram que 75% das pessoas admitem usar o telemóvel durante esse tempo — criando novos riscos de contaminação bacteriana.",
+  "A Fundação Bill & Melinda Gates financiou um concurso global de 'reinvenção da sanita' com prémios de milhões de dólares. O objetivo: criar uma sanita que funcione sem água, eletricidade ou ligação ao esgoto para os 2,4 mil milhões de pessoas sem saneamento.",
+  "A mais antiga evidência de saneamento organizado foi encontrada na cidade de Mohenjo-Daro, no atual Paquistão, datada de 2600 a.C. Cada casa tinha uma latrina ligada a um sistema de esgotos municipal — mais sofisticado do que muitas cidades europeias medievais.",
+  "Na Escócia do século XVI, era costume atirar os resíduos pela janela gritando 'Gardyloo!' (do francês 'garde l'eau' — cuidado com a água). Diz-se que esta prática deu origem à expressão inglesa 'loo' para designar a casa de banho.",
+  "O papel higiénico foi inventado na China por Zeng Gongliang no século VI d.C., mas só se tornou produto comercial em 1857, nos EUA. Os romanos usavam esponjas, os Vikings usavam lã, e a aristocracia europeia usava páginas de livros.",
+  "A ONU declarou o acesso ao saneamento um direito humano fundamental em 2010. Ainda assim, mais de 2,4 mil milhões de pessoas — um terço da humanidade — não têm acesso a uma sanita digna, causando milhões de mortes evitáveis por ano."
+];
+
+let fi = 0;
+
+function buildProgress() {
+  const c = document.getElementById('factProgress');
+  c.innerHTML = '';
+  facts.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'fact-dot' + (i === fi ? ' on' : '');
+    c.appendChild(d);
+  });
+}
+
+function showFact() {
+  document.getElementById('factText').textContent = facts[fi];
+  document.getElementById('factNum').textContent = `Curiosidade ${fi+1} de ${facts.length} · clica para avançar`;
+  buildProgress();
+}
+
+function nextFact() { fi = (fi+1) % facts.length; showFact(); }
+showFact();
+
+// ─── THREE.JS SETUP ───────────────────────
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+camera.position.set(0, 2.6, 6.2);
+camera.lookAt(0, 0.8, 0);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xfff2d8, 0.75));
+const key = new THREE.DirectionalLight(0xfff4e0, 2.0);
+key.position.set(5, 9, 5);
+key.castShadow = true;
+key.shadow.mapSize.width = 2048;
+key.shadow.mapSize.height = 2048;
+key.shadow.camera.near = 0.5;
+key.shadow.camera.far = 20;
+key.shadow.bias = -0.001;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xd8eaff, 0.55);
+fill.position.set(-5, 4, -3);
+scene.add(fill);
+const back = new THREE.DirectionalLight(0xffd898, 0.25);
+back.position.set(0, 3, -6);
+scene.add(back);
+const rimLight = new THREE.PointLight(0xffe0a0, 0.6, 8);
+rimLight.position.set(2, 3, -2);
+scene.add(rimLight);
+
+// Materials
+const matP  = new THREE.MeshStandardMaterial({ color: 0xd8cead, roughness: 0.08, metalness: 0.04 }); // porcelain warm beige
+const matP2 = new THREE.MeshStandardMaterial({ color: 0xc8be9a, roughness: 0.12, metalness: 0.04 }); // darker porcelain
+const matS  = new THREE.MeshStandardMaterial({ color: 0xcfc4a2, roughness: 0.22, metalness: 0.0  }); // seat
+const matW  = new THREE.MeshStandardMaterial({ color: 0x5a9ab8, roughness: 0.03, metalness: 0.05, transparent: true, opacity: 0.6 }); // water
+const matM  = new THREE.MeshStandardMaterial({ color: 0xb0bcc8, roughness: 0.08, metalness: 0.92 }); // metal
+const matG  = new THREE.MeshStandardMaterial({ color: 0x282418, roughness: 0.92 }); // floor
+
+const g = new THREE.Group();
+scene.add(g);
+
+// Floor
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), matG);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Subtle wall
+const wall = new THREE.Mesh(
+  new THREE.PlaneGeometry(7, 4.5),
+  new THREE.MeshStandardMaterial({ color: 0x131110, roughness: 0.85 })
+);
+wall.position.set(0, 2.2, -2.4);
+scene.add(wall);
+
+// ── PEDESTAL BASE
+const base = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 0.12, 48), matP);
+base.position.set(0, 0.06, 0.2);
+base.castShadow = true;
+g.add(base);
+
+// ── NECK
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.38, 0.3, 48), matP);
+neck.position.set(0, 0.27, 0.13);
+neck.castShadow = true;
+g.add(neck);
+
+// ── BOWL BODY
+const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.27, 0.46, 56), matP);
+bowl.position.set(0, 0.65, 0.02);
+bowl.castShadow = true;
+g.add(bowl);
+
+// ── BOWL UNDERSIDE
+const bowlBot = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.24, 0.07, 40), matP2);
+bowlBot.position.set(0, 0.43, 0.02);
+g.add(bowlBot);
+
+// ── RIM
+const rim = new THREE.Mesh(new THREE.TorusGeometry(0.445, 0.072, 20, 72), matP);
+rim.position.set(0, 0.87, 0.02);
+rim.rotation.x = Math.PI / 2;
+g.add(rim);
+
+// ── RIM INNER LIP
+const rimInner = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.022, 12, 60), matP2);
+rimInner.position.set(0, 0.845, 0.02);
+rimInner.rotation.x = Math.PI / 2;
+g.add(rimInner);
+
+// ── WATER
+const waterMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.032, 56), matW);
+waterMesh.position.set(0, 0.64, 0.02);
+g.add(waterMesh);
+
+// ── SEAT RING (open at back)
+const seatGroup = new THREE.Group();
+seatGroup.position.set(0, 0.905, 0.02);
+g.add(seatGroup);
+const seatRing = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.063, 18, 80, Math.PI * 1.72), matS);
+seatRing.rotation.x = Math.PI / 2;
+seatRing.rotation.z = Math.PI * 0.14;
+seatGroup.add(seatRing);
+
+// ── LID GROUP (pivots at back)
+const lidGroup = new THREE.Group();
+lidGroup.position.set(0, 0.91, -0.41);
+g.add(lidGroup);
+
+const lidTop = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.022, 60), matS);
+lidTop.scale.set(0.95, 1, 1.1);
+lidTop.position.set(0, 0, 0.22);
+lidGroup.add(lidTop);
+
+// ── TANK (cisterna)
+const tank = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.72, 0.23), matP);
+tank.position.set(0, 1.3, -0.59);
+tank.castShadow = true;
+g.add(tank);
+
+// Tank front face subtle detail
+const tankFace = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.68, 0.012), matP2);
+tankFace.position.set(0, 1.3, -0.473);
+g.add(tankFace);
+
+// Tank bottom trim
+const tankTrim = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.04, 0.27), matP2);
+tankTrim.position.set(0, 0.95, -0.59);
+g.add(tankTrim);
+
+// Tank lid
+const tankLid = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.036, 0.27), matP);
+tankLid.position.set(0, 1.666, -0.59);
+g.add(tankLid);
+
+// Flush buttons (dual flush)
+const btn1 = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.016, 28), matM);
+btn1.rotation.x = Math.PI / 2;
+btn1.position.set(-0.11, 1.678, -0.59);
+g.add(btn1);
+const btn2 = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.016, 28), matM);
+btn2.rotation.x = Math.PI / 2;
+btn2.position.set(0.12, 1.678, -0.59);
+g.add(btn2);
+
+// Hinge detail on tank
+const hingeL = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.08, 12), matM);
+hingeL.position.set(-0.3, 1.67, -0.59);
+g.add(hingeL);
+const hingeR = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.08, 12), matM);
+hingeR.position.set(0.3, 1.67, -0.59);
+g.add(hingeR);
+
+// Supply pipe
+const pipeShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.58, 18), matM);
+pipeShaft.position.set(0.23, 0.62, -0.71);
+g.add(pipeShaft);
+const pipeElbow = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.022, 12, 20, Math.PI/2), matM);
+pipeElbow.position.set(0.23, 0.905, -0.66);
+pipeElbow.rotation.y = Math.PI;
+g.add(pipeElbow);
+const pipeH = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.06, 12), matM);
+pipeH.rotation.z = Math.PI/2;
+pipeH.position.set(0.258, 0.905, -0.66);
+g.add(pipeH);
+const pipeCap = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.018, 18), matM);
+pipeCap.position.set(0.23, 0.925, -0.71);
+g.add(pipeCap);
+
+// Shadow catcher
+const shadowCatch = new THREE.Mesh(
+  new THREE.CircleGeometry(0.65, 48),
+  new THREE.MeshStandardMaterial({ color: 0x080604, transparent: true, opacity: 0.55 })
+);
+shadowCatch.rotation.x = -Math.PI / 2;
+shadowCatch.position.set(0, 0.001, 0.08);
+scene.add(shadowCatch);
+
+// ── ORBIT CONTROLS ──────────────────────
+let isDrag = false, px = 0, py = 0;
+let rotY = 0.3, rotX = 0.08, tRY = 0.3, tRX = 0.08;
+const FIXED_ZOOM = 6.2;
+let autoRot = true;
+
+canvas.addEventListener('mousedown', e => { isDrag = true; px = e.clientX; py = e.clientY; });
+window.addEventListener('mouseup', () => isDrag = false);
+canvas.addEventListener('mousemove', e => {
+  if (!isDrag) return;
+  tRY += (e.clientX - px) * 0.011;
+  tRX += (e.clientY - py) * 0.007;
+  tRX = Math.max(-0.38, Math.min(0.58, tRX));
+  px = e.clientX; py = e.clientY;
+});
+canvas.addEventListener('touchstart', e => {
+  isDrag = true; px = e.touches[0].clientX; py = e.touches[0].clientY; e.preventDefault();
+}, { passive: false });
+window.addEventListener('touchend', () => isDrag = false);
+canvas.addEventListener('touchmove', e => {
+  if (!isDrag) return;
+  tRY += (e.touches[0].clientX - px) * 0.011;
+  tRX += (e.touches[0].clientY - py) * 0.007;
+  tRX = Math.max(-0.38, Math.min(0.58, tRX));
+  px = e.touches[0].clientX; py = e.touches[0].clientY; e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('wheel', e => { e.preventDefault(); }, { passive: false });
+
+// ── SEAT / LID ──────────────────────────
+let seatOpen = false, seatAngle = 0, tSeat = 0;
+
+function toggleSeat() {
+  seatOpen = !seatOpen;
+  tSeat = seatOpen ? -Math.PI * 0.78 : 0;
+  const b = document.getElementById('seatBtn');
+  b.textContent = seatOpen ? '↓ Fechar tampa' : '↑ Abrir tampa';
+  b.classList.toggle('active', seatOpen);
+}
+
+// ── AUTO ROTATION ────────────────────────
+function toggleAuto() {
+  autoRot = !autoRot;
+  const b = document.getElementById('autoBtn');
+  b.textContent = autoRot ? '◎ Rotação auto' : '○ Rotação auto';
+  b.classList.toggle('active', autoRot);
+}
+
+// ── FLUSH ────────────────────────────────
+let flushAnim = false, flushT = 0;
+
+function triggerFlush() {
+  if (flushAnim) return;
+  flushAnim = true; flushT = 0;
+  const b = document.getElementById('flushBtn');
+  b.textContent = '≋ A lavar...'; b.classList.add('active');
+  setTimeout(() => {
+    b.textContent = '≋ Dar descarga'; b.classList.remove('active'); flushAnim = false;
+  }, 2400);
+}
+
+// ── RESIZE ───────────────────────────────
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (renderer.domElement.width !== w || renderer.domElement.height !== h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+}
+
+// ── RENDER LOOP ──────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  resize();
+
+  if (autoRot) tRY += 0.004;
+  rotY += (tRY - rotY) * 0.07;
+  rotX += (tRX - rotX) * 0.07;
+
+  g.rotation.y = rotY;
+  g.rotation.x = rotX;
+  camera.position.z = FIXED_ZOOM;
+  camera.position.y = 2.6;
+  camera.lookAt(0, 0.8, 0);
+
+  seatAngle += (tSeat - seatAngle) * 0.09;
+  lidGroup.rotation.x = seatAngle;
+  seatGroup.rotation.x = seatAngle * 0.42;
+
+  if (flushAnim) {
+    flushT += 0.1;
+    waterMesh.scale.y = 1 + Math.sin(flushT * 2.8) * 0.28;
+    waterMesh.material.opacity = 0.45 + Math.sin(flushT * 1.6) * 0.22;
+    const h = 0.54 + Math.sin(flushT * 0.8) * 0.04;
+    waterMesh.material.color.setHSL(h, 0.55, 0.42);
+  } else {
+    waterMesh.scale.y += (1 - waterMesh.scale.y) * 0.07;
+    waterMesh.material.opacity += (0.6 - waterMesh.material.opacity) * 0.04;
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
